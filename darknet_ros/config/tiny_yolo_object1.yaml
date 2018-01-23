@@ -1,0 +1,12 @@
+yolo_model:
+
+  config_file:
+    name: tiny-yolo-object1.cfg
+  weight_file:
+    name: tiny-yolo-object1_5000.weights
+  threshold:
+    value: 0.6
+  detection_classes:
+    names:
+      - OBJECT1
+      
