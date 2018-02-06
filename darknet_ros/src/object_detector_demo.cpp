@@ -78,6 +78,7 @@ void *fetch_in_thread(void *ptr) {
   if(!in.data) {
     error("Stream closed.");
   }
+
   in_s = letterbox_image(in, net.w, net.h);
   return 0;
 }
@@ -101,6 +102,8 @@ void *detect_in_thread(void *ptr) {
   } else {
     error("Last layer must produce detections\n");
   }
+
+
   if (nms > 0) do_nms_obj(boxes, probs, l.w*l.h*l.n, l.classes, nms);
   //printf("\033[2J");
   //printf("\033[1;1H");
@@ -261,6 +264,7 @@ extern "C" darknet_ros::RosBox_ *demo_yolo() {
       }
     }
   } else {
+    
     ++count;
     fetch_in_thread(0);
     det = in;
@@ -285,6 +289,7 @@ extern "C" darknet_ros::RosBox_ *demo_yolo() {
     float curr = 1./(tval_after - tval_before);
     fps = curr;
     tval_before = tval_after;
+
   }
 
   return ROI_boxes;

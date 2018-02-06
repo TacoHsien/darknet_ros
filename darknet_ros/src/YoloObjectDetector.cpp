@@ -53,10 +53,16 @@ YoloObjectDetector::YoloObjectDetector(ros::NodeHandle nh):
 
 bool YoloObjectDetector::readParameters() {
   // Load common parameters.
+  ROS_INFO("[YoloObjectDetector] Load common parameters.");
+
   nodeHandle_.param("image_view/enable_opencv", viewImage_, true);
   nodeHandle_.param("image_view/use_darknet", darknetImageViewer_, false);
   nodeHandle_.param("image_view/wait_key_delay", waitKeyDelay_, 3);
   nodeHandle_.param("image_view/enable_console_output", enableConsoleOutput_, false);
+ 
+  std::cout << "darknetImageViewer: "<< darknetImageViewer_ << std::endl; 
+  std::cout << "enableConsoleOutput: "<< enableConsoleOutput_ << std::endl;
+  ROS_INFO("[YoloObjectDetector] Load common parameters.END");
 
   // Check if Xserver is running on Linux.
   if(XOpenDisplay(NULL)) {
@@ -138,7 +144,8 @@ void YoloObjectDetector::init() {
                     0.5,
                     0, 0, 0, 0,
                     enableConsoleOutput_);
-
+  
+  ROS_INFO("[YoloObjectDetector] After load_network_demo");
   // Initialize publisher and subscriber.
   std::string cameraTopicName;
   int cameraQueueSize;
@@ -151,6 +158,8 @@ void YoloObjectDetector::init() {
   std::string detectionImageTopicName;
   int detectionImageQueueSize;
   bool detectionImageLatch;
+
+  ROS_INFO("[YoloObjectDetector] Initialize publisher and subscriber.");
 
   nodeHandle_.param("subscribers/camera_reading/topic", cameraTopicName, std::string("/camera/image_raw"));
   nodeHandle_.param("subscribers/camera_reading/queue_size", cameraQueueSize, 1);
@@ -170,6 +179,7 @@ void YoloObjectDetector::init() {
   detectionImagePublisher_ = nodeHandle_.advertise<sensor_msgs::Image>(detectionImageTopicName, detectionImageQueueSize, detectionImageLatch);
 
   // Action servers.
+  ROS_INFO("[YoloObjectDetector] Action servers.");
   std::string checkForObjectsActionName;
   nodeHandle_.param("actions/camera_reading/topic", checkForObjectsActionName, std::string("check_for_objects"));
   checkForObjectsActionServer_.reset(
@@ -183,6 +193,7 @@ void YoloObjectDetector::init() {
   checkForObjectsActionServer_->start();
 
   // OpenCv image view.
+  ROS_INFO("[YoloObjectDetector] OpenCV image view.");
   if(viewImage_ && !darknetImageViewer_) {
     cv::namedWindow(opencvWindow_, cv::WINDOW_NORMAL);
     cv::moveWindow(opencvWindow_, 0, 0);
@@ -199,12 +210,17 @@ YoloObjectDetector::~YoloObjectDetector() {
 void YoloObjectDetector::drawBoxes(cv::Mat &inputFrame, std::vector<RosBox_> &rosBoxes, int &numberOfObjects,
    cv::Scalar &rosBoxColor, const std::string &objectLabel) {
   darknet_ros_msgs::BoundingBox boundingBox;
+  ROS_INFO("[YoloObjectDetector] drawBoxes");  
 
   for (int i = 0; i < numberOfObjects; i++) {
     int xmin = (rosBoxes[i].x - rosBoxes[i].w/2)*frameWidth_;
     int ymin = (rosBoxes[i].y - rosBoxes[i].h/2)*frameHeight_;
     int xmax = (rosBoxes[i].x + rosBoxes[i].w/2)*frameWidth_;
     int ymax = (rosBoxes[i].y + rosBoxes[i].h/2)*frameHeight_;
+
+    std::cout << "(xmin, ymin) = " << "(" << xmin << ", " << ymin << ")" << std::endl;
+    std::cout << "(xmax, ymax) = " << "(" << xmax << ", " << ymax << ")" << std::endl;    
+    std::cout << "Center (x, y) = " << "(" << (xmax+xmin)/2 << ", " << (ymax+ymin)/2 << ")" << std::endl;
 
     boundingBox.Class = objectLabel;
     boundingBox.probability = rosBoxes[i].prob;
@@ -217,7 +233,9 @@ void YoloObjectDetector::drawBoxes(cv::Mat &inputFrame, std::vector<RosBox_> &ro
     // draw bounding box of first object found
     cv::Point topLeftCorner = cv::Point(xmin, ymin);
     cv::Point botRightCorner = cv::Point(xmax, ymax);
+    cv::Point center = cv::Point((xmin+xmax)*0.5, (ymin+ymax)*0.5);
     cv::rectangle(inputFrame, topLeftCorner, botRightCorner, rosBoxColor, 2);
+    cv::circle(inputFrame, center, 5, rosBoxColor, -1, 8);
     std::ostringstream probability;
     probability << rosBoxes[i].prob*100;
     cv::putText(inputFrame, objectLabel + " (" + probability.str() + "%)", cv::Point(xmin, ymax+15), cv::FONT_HERSHEY_PLAIN,
@@ -237,7 +255,7 @@ void YoloObjectDetector::runYolo(cv::Mat &fullFrame, const std_msgs::Header& hea
 
   // get the number of bounding boxes found
   int num = boxes_[0].num;
-
+  std::cout << "NUM: "<< num << std::endl;
   // if at least one BoundingBox found, draw box
   if (num > 0  && num <= 100) {
     if(!darknetImageViewer_ && enableConsoleOutput_) {
